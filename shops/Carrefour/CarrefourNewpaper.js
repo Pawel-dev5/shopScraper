@@ -1,6 +1,6 @@
 import { launch } from 'puppeteer';
 
-export const scrapeCarrefourNewspaper = async () => {
+export const CarrefourNewpaper = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
 	const timeout = { timeout: 10 };

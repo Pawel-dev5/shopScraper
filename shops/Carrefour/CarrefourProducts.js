@@ -1,15 +1,16 @@
 import { launch } from 'puppeteer';
 
-export const scrapeCarrefourProducts = async () => {
+export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
 	const timeout = { timeout: 10 };
+	let arr = [];
 
 	const getPageData = async (itemId) => {
 		const baseSelectors = 'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > div';
-		let productPrice;
-		let productPriceRest;
-		let productTitle;
+		let selectorPrice;
+		let selectorPriceRest;
+		let selectorTitle;
 
 		const getPrice = (index) =>
 			page.waitForSelector(
@@ -23,24 +24,24 @@ export const scrapeCarrefourProducts = async () => {
 			);
 
 		try {
-			productTitle = await page.waitForSelector(
+			selectorTitle = await page.waitForSelector(
 				`${baseSelectors} > div:nth-child(${itemId}) > div > div.MuiBox-root > a.MuiButtonBase-root`,
 				timeout,
 			);
-			productPrice = await getPrice(4);
-			productPriceRest = await getPriceRest(4);
+			selectorPrice = await getPrice(4);
+			selectorPriceRest = await getPriceRest(4);
 		} catch (e) {
 			try {
-				productPrice = await getPrice(3);
-				productPriceRest = await getPriceRest(3);
+				selectorPrice = await getPrice(3);
+				selectorPriceRest = await getPriceRest(3);
 			} catch (e) {
 				try {
-					productPrice = await getPrice(5);
-					productPriceRest = await getPriceRest(5);
+					selectorPrice = await getPrice(5);
+					selectorPriceRest = await getPriceRest(5);
 				} catch (e) {
 					try {
-						productPrice = await getPrice(6);
-						productPriceRest = await getPriceRest(6);
+						selectorPrice = await getPrice(6);
+						selectorPriceRest = await getPriceRest(6);
 					} catch (e) {
 						// console.log(e);
 					}
@@ -48,17 +49,25 @@ export const scrapeCarrefourProducts = async () => {
 			}
 		}
 
-		if (productPrice && productTitle && productPriceRest) {
-			const title = await page.evaluate((productTitle) => productTitle?.textContent, productTitle);
-			const price = await page.evaluate((productPrice) => productPrice?.textContent, productPrice);
-			const priceRest = await page.evaluate((productPriceRest) => productPriceRest?.textContent, productPriceRest);
-			console.log(title + ' ' + price + ',' + priceRest + 'zł');
+		if (selectorPrice && selectorTitle && selectorPriceRest) {
+			const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
+			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
+			const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
+			// console.log(title + ' ' + price + ',' + priceRest + 'zł');
+
+			const newObject = {
+				title,
+				price: `${price},${priceRest} zł`,
+			};
+			if (newObject) arr.push(newObject);
+			// arr = [];
 		}
 	};
 
 	const getHomePage = async () => {
 		await page.goto('https://www.carrefour.pl/artykuly-spozywcze');
 		for (let i = 1; i < 61; i++) await getPageData(i);
+		console.log(arr);
 	};
 
 	const getRestPages = async () => {
@@ -66,6 +75,7 @@ export const scrapeCarrefourProducts = async () => {
 			console.log('PageID', pageId);
 			await page.goto(`https://www.carrefour.pl/artykuly-spozywcze?page=${pageId}`);
 			for (let i = 1; i < 61; i++) await getPageData(i);
+			console.log(arr);
 		}
 	};
 
