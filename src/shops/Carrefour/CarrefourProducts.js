@@ -2,12 +2,20 @@ import { launch } from 'puppeteer';
 import mysql from 'mysql';
 
 // COMPONENTS
-import { connectSqlConfig, checkIsExist, addNewCarrefourProduct, updateCarrefourProduct } from './mysql/carrefourSQL.js';
+import { checkIsExist, addNewProduct, updateProductPrice } from '../../common/mysql/queriesSQL.js';
+
+// COMMON
+import { connectSqlConfig } from '../../common/mysql/sqlConfig.js';
 
 export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
 	const timeout = { timeout: 10 };
+	const connection = mysql.createConnection(connectSqlConfig);
+	connection.connect(function (err) {
+		if (err) return console.error('error: ' + err.message);
+		console.log('Connected to the MySQL server.');
+	});
 
 	const getPageData = async (itemId) => {
 		const baseSelectors = 'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > div';
@@ -57,19 +65,17 @@ export const CarrefourProducts = async () => {
 			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
 			const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
 
-			const productTitle = title?.replace("'", "\\'");
+			const productTitle = title?.replace("'", "\\'")?.split("'");
 			const productPrice = `${price},${priceRest} zł`;
 			console.log(productTitle + ' ' + price + ',' + priceRest + 'zł');
+			const shop = 'carrefours';
 
-			const connection = mysql.createConnection(connectSqlConfig);
-			connection.connect(function (err) {
-				if (err) return console.error('error: ' + err.message);
-				console.log('Connected to the MySQL server.');
-			});
-
-			const createCallback = () => addNewCarrefourProduct(connection, productTitle, productPrice);
-			const updateCallback = (id) => updateCarrefourProduct(connection, id, productPrice);
-			checkIsExist(connection, productTitle, createCallback, updateCallback);
+			const createCallback = () => {
+				console.log('create');
+				addNewProduct(connection, shop, productTitle, productPrice);
+			};
+			const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
+			checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
 
 			// DELETE statment
 			// let sqlDelete = `DELETE FROM carrefours WHERE title = "Pomidor"`;
@@ -98,7 +104,8 @@ export const CarrefourProducts = async () => {
 		}
 	};
 
-	// await getHomePage();
+	await getHomePage();
 	await getRestPages();
+	await connection.end();
 	await browser.close();
 };
