@@ -1,11 +1,11 @@
 import { launch } from 'puppeteer';
-import { pagesToScrapGlovo } from './pagesToScrapGlovo.js';
+import { pagesGlovo } from './pagesGlovo.js';
 
 export const BiedronkaProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
 
-	pagesToScrapGlovo.map(async (currentPage) => {
+	pagesGlovo.map(async (currentPage) => {
 		try {
 			await page.goto(currentPage);
 

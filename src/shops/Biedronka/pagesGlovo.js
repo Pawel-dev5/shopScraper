@@ -144,7 +144,7 @@ const petsPages = [
 	'https://glovoapp.com/pl/pl/warszawa/biedronka-waw/?content=dla-zwierzat-sc.210711128%2Fkoty-c.1154943103',
 ];
 
-export const pagesToScrapGlovo = [
+export const pagesGlovo = [
 	...vegetablesPages,
 	...meatPages,
 	...bakeryPages,

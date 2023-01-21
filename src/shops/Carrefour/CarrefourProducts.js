@@ -1,10 +1,13 @@
 import { launch } from 'puppeteer';
+import mysql from 'mysql';
+
+// COMPONENTS
+import { connectSqlConfig, checkIsExist, addNewCarrefourProduct, updateCarrefourProduct } from './mysql/carrefourSQL.js';
 
 export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
 	const timeout = { timeout: 10 };
-	let arr = [];
 
 	const getPageData = async (itemId) => {
 		const baseSelectors = 'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > div';
@@ -53,21 +56,38 @@ export const CarrefourProducts = async () => {
 			const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
 			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
 			const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
-			// console.log(title + ' ' + price + ',' + priceRest + 'zł');
 
-			const newObject = {
-				title,
-				price: `${price},${priceRest} zł`,
-			};
-			if (newObject) arr.push(newObject);
-			// arr = [];
+			const productTitle = title?.replace("'", "\\'");
+			const productPrice = `${price},${priceRest} zł`;
+			console.log(productTitle + ' ' + price + ',' + priceRest + 'zł');
+
+			const connection = mysql.createConnection(connectSqlConfig);
+			connection.connect(function (err) {
+				if (err) return console.error('error: ' + err.message);
+				console.log('Connected to the MySQL server.');
+			});
+
+			const createCallback = () => addNewCarrefourProduct(connection, productTitle, productPrice);
+			const updateCallback = (id) => updateCarrefourProduct(connection, id, productPrice);
+			checkIsExist(connection, productTitle, createCallback, updateCallback);
+
+			// DELETE statment
+			// let sqlDelete = `DELETE FROM carrefours WHERE title = "Pomidor"`;
+			// let sqlDeletePrice = `DELETE FROM components_products_prices WHERE id = "4294967295"`;
+			// let sqlDeleteConnection = `DELETE FROM carrefours_components WHERE id = "4294967295"`;
+			// connection.query(sqlDelete, 1, (error, results) => {
+			// 	if (error) return console.error(error.message);
+
+			// 	console.log('Deleted Row(s):', results.affectedRows);
+			// });
+
+			// connection.end();
 		}
 	};
 
 	const getHomePage = async () => {
 		await page.goto('https://www.carrefour.pl/artykuly-spozywcze');
 		for (let i = 1; i < 61; i++) await getPageData(i);
-		console.log(arr);
 	};
 
 	const getRestPages = async () => {
@@ -75,11 +95,10 @@ export const CarrefourProducts = async () => {
 			console.log('PageID', pageId);
 			await page.goto(`https://www.carrefour.pl/artykuly-spozywcze?page=${pageId}`);
 			for (let i = 1; i < 61; i++) await getPageData(i);
-			console.log(arr);
 		}
 	};
 
-	await getHomePage();
+	// await getHomePage();
 	await getRestPages();
 	await browser.close();
 };
