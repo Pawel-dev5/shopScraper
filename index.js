@@ -1,10 +1,13 @@
-import { CarrefourProducts, BiedronkaProducts, MakroProducts } from './src/shops/index.js';
+import { CarrefourProducts, BiedronkaProducts, MakroProducts, RossmanProducts, BiedraProducts } from './src/shops/index.js';
 
 const scrapeShops = async () => {
-	await CarrefourProducts();
+	// await CarrefourProducts();
+	// await RossmanProducts();
+	await BiedraProducts();
+
 	// await MakroProducts();
-	// await scrapeCarrefourNewspaper();
 	// await BiedronkaProducts();
+	// await scrapeCarrefourNewspaper();
 };
 
 scrapeShops();

@@ -1,9 +1,9 @@
 import { launch } from 'puppeteer';
-import { pagesGlovo } from './pagesGlovo.js';
 import mysql from 'mysql';
 
 // COMMON
 import { connectSqlConfig } from '../../common/mysql/sqlConfig.js';
+import { pagesGlovo } from './pagesGlovo.js';
 
 export const BiedronkaProducts = async () => {
 	const browser = await launch({});
@@ -44,7 +44,7 @@ export const BiedronkaProducts = async () => {
 					// return results;
 				});
 			// console.log(currentPage);
-			// console.log(urls);
+			console.log(urls());
 			await urls();
 			// return urls;
 			await browser.close();
