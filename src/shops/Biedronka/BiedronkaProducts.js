@@ -1,9 +1,12 @@
 import { launch } from 'puppeteer';
 import mysql from 'mysql';
 
+// COMPONENTS
+import { checkIsExist, addNewProduct, updateProductPrice } from '../../common/mysql/queriesSQL.js';
+import { pagesGlovo } from './pagesGlovo.js';
+
 // COMMON
 import { connectSqlConfig } from '../../common/mysql/sqlConfig.js';
-import { pagesGlovo } from './pagesGlovo.js';
 
 export const BiedronkaProducts = async () => {
 	const browser = await launch({});
@@ -14,43 +17,72 @@ export const BiedronkaProducts = async () => {
 		console.log('Connected to the MySQL server.');
 	});
 
-	pagesGlovo.map(async (currentPage) => {
+	const rootSelector = (gridNumber) =>
+		`div.store__body__dynamic-content > div:nth-child(${gridNumber}) > div.grid__content > section`;
+
+	const getPageData = async (itemId, gridNumber) => {
+		const baseSelectors = `${rootSelector(gridNumber)}:nth-child(${itemId}) > div`;
+		let selectorPrice;
+		let selectorTitle;
+		let selectorImageUrl;
+
+		const getPrice = (index) => page.waitForSelector(`${baseSelectors} > div:nth-child(${index}) > div > span`);
+		const getTitle = () => page.waitForSelector(`${baseSelectors} > span > span`);
+		const getImageUrl = (index) => page.waitForSelector(`${baseSelectors} > div:nth-child(${index}) > img`);
+
 		try {
-			await page.goto(currentPage);
-
-			const urls = () =>
-				page.evaluate(() => {
-					const results = [];
-					const items = document.querySelectorAll('[data-test-id="product-tile"]');
-					items?.map((item) => {
-						const title = item?.children?.item(1)?.firstChild?.innerText;
-						const price = item?.children?.item(2)?.firstChild?.innerText;
-						const img = item?.firstChild?.children?.item(3)?.src;
-						const shop = 'biedronkas';
-
-						const createCallback = () => {
-							console.log('create');
-							addNewCarrefourProduct(connection, shop, title, price);
-						};
-						const updateCallback = (id) => updateCarrefourProduct(connection, shop, id, price);
-						return checkIsExist(connection, shop, title, createCallback, updateCallback);
-
-						// results.push({
-						// 	title,
-						// 	price,
-						// 	img,
-						// });
-					});
-					// return results;
-				});
-			// console.log(currentPage);
-			console.log(urls());
-			await urls();
-			// return urls;
-			await browser.close();
+			selectorPrice = await getPrice(3);
+			selectorTitle = await getTitle();
+			selectorImageUrl = await getImageUrl(1);
 		} catch (e) {
-			console.log('error');
-			return null;
+			console.log('error get biedra page data', itemId);
 		}
-	});
+
+		if (selectorPrice && selectorTitle && selectorImageUrl) {
+			const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
+			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
+			const url = await page.evaluate((selectorImageUrl) => selectorImageUrl?.src, selectorImageUrl);
+
+			const productTitle = title?.trim();
+			const productPrice = price?.trim();
+			const imageUrl = url.trim();
+			const shop = 'biedronkas';
+
+			// const createCallback = () => console.log('create', productTitle, productPrice);
+			const createCallback = async () => addNewProduct({ connection, shop, productTitle, productPrice, imageUrl });
+
+			// const updateCallback = (id) => console.log('update', productTitle, productPrice);
+			const updateCallback = async (id) => updateProductPrice(connection, shop, id, productPrice);
+
+			checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
+		}
+	};
+
+	const getPages = async () => {
+		if (pagesGlovo && pagesGlovo?.length > 0) {
+			for (let pageId = 0; pageId <= pagesGlovo?.length; pageId++) {
+				if (pagesGlovo[pageId]) {
+					await page.goto(pagesGlovo[pageId]);
+					await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
+					const gridCounter = (await page.$$(`div.store__body__dynamic-content > div > div.grid__content`))?.length;
+
+					const countItems = async () => {
+						console.log('Page:', pagesGlovo[pageId]);
+						for (let gridNumber = 1; gridNumber <= gridCounter; gridNumber++) {
+							const itemsCounter = (await page.$$(rootSelector(gridNumber)))?.length;
+
+							for (let i = 1; i <= itemsCounter; i++) await getPageData(i, gridNumber);
+						}
+					};
+					await countItems();
+				}
+			}
+		}
+	};
+
+	const endConnection = async () => connection.end();
+
+	await getPages();
+	// await endConnection();
+	await browser.close();
 };

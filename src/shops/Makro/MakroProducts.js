@@ -62,18 +62,65 @@ export const MakroProducts = async () => {
 		for (let pageId = 0; pageId < makroPages?.length; pageId++) {
 			console.log('PageID', makroPages[pageId]);
 			// try {
-			await page.goto(makroPages[pageId], { waitUntil: 'networkidle0' });
+			await page.goto(makroPages[pageId], { waitUntil: 'domcontentloaded' });
+			// Large viewport
+			// page.setViewport({ width: 1280, height: 800 });
+			await page.evaluate((_) => {
+				console.log(window.innerHeight);
+				window.scrollBy(0, window.innerHeight);
+			});
+
+			// await autoScroll(page);
+
+			const gridCounterLength = await page.waitForSelector(`a.mfcss_load-more-articles`);
+
 			// const selectorTitle = await page.waitForSelector('#main > div > div:last-child > div > div:nth-child(2)', timeout);
-			// const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
+			// await page.click('a.mfcss_load-more-articles');
 
+			const firstCount = await page.$(`a.mfcss_load-more-articles`);
+
+			const rect = await page.evaluate((firstCount) => {
+				const { top, left, bottom, right } = firstCount.getBoundingClientRect();
+				return { top, left, bottom, right };
+			}, firstCount);
+
+			const click = async () => {
+				await page.mouse.click(rect.right + 100, rect.bottom + 10);
+			};
+
+			const tmp = async () => {
+				setTimeout(async () => {
+					try {
+						console.log('Delayed for 50 second.');
+						const updatedCount = await page.waitForSelector(`a.mfcss_load-more-articles`);
+						const title = await page.evaluate((updatedCount) => updatedCount?.textContent, updatedCount);
+						console.log(title);
+					} catch (e) {
+						console.log('WORKING!');
+					}
+				}, 50000);
+			};
+			console.log(rect);
+
+			await click();
+			await tmp();
+			// const onClick = async () => {
+			// const title = await page.evaluate((gridCounterLength) => gridCounterLength?.textContent, gridCounterLength);
+			// console.log(title);
+			// };
+
+			// if (gridCounterLength) {
+			// await onClick();
 			// console.log('pageItems', selectorTitle);
-
-			for (let i = 1; i < 61; i++) await getPageData(i);
-			console.log(arr);
+			// for (let i = 1; i < 61; i++) await getPageData(i);
+			// console.log(arr);
 			// } catch (e) {}
+			// }
 		}
 	};
 
+	// const endConnection = async () => connection.end();
+
 	await getMakroPages();
-	await browser.close();
+	// await browser.close();
 };

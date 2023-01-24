@@ -14,9 +14,14 @@ const createProductPrice = ({ connection, shop, priceID, currentDate, productPri
 	// CREATE PRODUCT PRICE CONNECTIONS
 	const sqlCreateProductPriceRelation = `INSERT INTO ${shop}_components(id,entity_id,component_id,component_type,field)
 		VALUES("${connectionID}","${productID}","${priceID}","products.price","prices")`;
-	connection.query(sqlCreateProductPriceRelation, (error) => {
-		if (error) return console.log('createProdPriceConnectQueryError', error);
-	});
+	if (productID && priceID && connectionID && connection) {
+		connection.query(sqlCreateProductPriceRelation, (error) => {
+			if (error) {
+				return console.log('RELATION ERROR!', 'ProdID:', productID, 'PriceID:', priceID, 'ConnectID:', connectionID);
+				// return 	console.log('createProdPriceConnectQueryError', error);
+			}
+		});
+	} else console.log('RELATION ERROR!', 'ProdID:', productID, 'PriceID:', priceID, 'ConnectID:', connectionID);
 };
 
 const createProduct = ({
