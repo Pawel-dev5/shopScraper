@@ -84,6 +84,8 @@ export const addNewProduct = ({ connection, shop, productTitle, productPrice, im
 			imageUrl,
 			productDescription,
 		};
+
+		// CHECK IF ID EXIST
 		if (results.length > 0) {
 			const newProductID = getRandomInt(100000, 429496729);
 			createProduct({ ...basicProps, newProductID });
@@ -96,6 +98,18 @@ export const updateProductPrice = (connection, shop, productID, productPrice) =>
 	const currentDate = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`;
 	const priceID = getRandomInt(randomRange[0], randomRange[1]);
 	const connectionID = getRandomInt(randomRange[0], randomRange[1]);
+
+	// let existPriceAndDate = false;
+	// let existPriceProdConnection = false;
+
+	// let checkPriceDate = `SELECT * FROM ${shop} WHERE price = "${productPrice}" AND date = "${currentDate}"`;
+	// let checkPriceProcConnection = `SELECT * FROM ${shop} WHERE entity_id = "${productID}" AND date = "${currentDate}"`;
+
+	// connection.query(checkPriceDate, (error, results) => {
+	// 	if (error) return console.error('checkIsExistProd', error?.message);
+	// 	if (results?.length === 0) existPriceAndDate = false;
+	// 	if (results?.length > 0) existPriceAndDate = true;
+	// });
 
 	// CREATE PRICE AND RELATIONS
 	createProductPrice({ connection, shop, priceID, currentDate, productPrice, connectionID, productID });
