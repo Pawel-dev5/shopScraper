@@ -37,16 +37,18 @@ export const AuchanProducts = async () => {
 				const element = title.split(/\r\n|\r|\n/);
 
 				if (element && element[0] && element[1]) {
-					const productTitle = element[0].trim();
+					const productTitle = element[0].trim().replace('- - ) ', '').replace('- - )', '').replace('- - ', '');
 					const productPrice = element[1].trim();
 
-					// const createCallback = () => console.log('create', productTitle);
-					const createCallback = async () => addNewProduct({ connection, shop, productTitle, productPrice });
+					if (productTitle !== '') {
+						// const createCallback = () => console.log('create', productTitle);
+						const createCallback = async () => addNewProduct({ connection, shop, productTitle, productPrice });
 
-					// const updateCallback = (id) => console.log('update', productTitle);
-					const updateCallback = async (id) => updateProductPrice(connection, shop, id, productPrice);
+						// const updateCallback = (id) => console.log('update', productTitle);
+						const updateCallback = async (id) => updateProductPrice(connection, shop, id, productPrice);
 
-					checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
+						checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
+					}
 				}
 			}
 		};
@@ -54,6 +56,7 @@ export const AuchanProducts = async () => {
 		if (allPages && allPages?.length > 0) {
 			for (let pageId = 0; pageId <= allPages?.length; pageId++) {
 				if (allPages[pageId]) {
+					console.log(allPages[pageId]);
 					await page.goto(allPages[pageId]);
 
 					const scrollToLoadAllItems = async () => {
@@ -78,6 +81,7 @@ export const AuchanProducts = async () => {
 								console.log(loadedItems);
 								console.log(allItems);
 								console.log(allItems === loadedItems);
+
 								await page.evaluate((selector) => {
 									const scrollableSection = document.querySelector(selector);
 

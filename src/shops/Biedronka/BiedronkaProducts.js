@@ -20,7 +20,7 @@ export const BiedronkaProducts = async () => {
 	const rootSelector = (gridNumber) =>
 		`div.store__body__dynamic-content > div:nth-child(${gridNumber}) > div.grid__content > section`;
 
-	const getPageData = async (itemId, gridNumber) => {
+	const getPageData = async (itemId, gridNumber, productCategory) => {
 		const baseSelectors = `${rootSelector(gridNumber)}:nth-child(${itemId}) > div`;
 		let selectorPrice;
 		let selectorTitle;
@@ -49,7 +49,8 @@ export const BiedronkaProducts = async () => {
 			const shop = 'biedronkas';
 
 			// const createCallback = () => console.log('create', productTitle, productPrice);
-			const createCallback = async () => addNewProduct({ connection, shop, productTitle, productPrice, imageUrl });
+			const createCallback = async () =>
+				addNewProduct({ connection, shop, productTitle, productPrice, imageUrl, productCategory });
 
 			// const updateCallback = (id) => console.log('update', productTitle, productPrice);
 			const updateCallback = async (id) => updateProductPrice(connection, shop, id, productPrice);
@@ -62,19 +63,29 @@ export const BiedronkaProducts = async () => {
 		if (pagesGlovo && pagesGlovo?.length > 0) {
 			for (let pageId = 0; pageId <= pagesGlovo?.length; pageId++) {
 				if (pagesGlovo[pageId]) {
-					await page.goto(pagesGlovo[pageId]);
-					await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
-					const gridCounter = (await page.$$(`div.store__body__dynamic-content > div > div.grid__content`))?.length;
+					try {
+						const productCategory = pagesGlovo[pageId]?.category;
+						const urls = pagesGlovo[pageId]?.urls;
 
-					const countItems = async () => {
-						console.log('Page:', pagesGlovo[pageId]);
-						for (let gridNumber = 1; gridNumber <= gridCounter; gridNumber++) {
-							const itemsCounter = (await page.$$(rootSelector(gridNumber)))?.length;
+						for (let urlId = 0; urlId <= urls?.length; urlId++) {
+							if (urls[urlId]) {
+								await page.goto(urls[urlId]);
+								await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
+								const gridCounter = (await page.$$(`div.store__body__dynamic-content > div > div.grid__content`))?.length;
 
-							for (let i = 1; i <= itemsCounter; i++) await getPageData(i, gridNumber);
+								const countItems = async () => {
+									console.log('Page:', urls[urlId]);
+									for (let gridNumber = 1; gridNumber <= gridCounter; gridNumber++) {
+										const itemsCounter = (await page.$$(rootSelector(gridNumber)))?.length;
+										for (let i = 1; i <= itemsCounter; i++) await getPageData(i, gridNumber, productCategory);
+									}
+								};
+								await countItems();
+							}
 						}
-					};
-					await countItems();
+					} catch (e) {
+						console.log('PageError!', pagesGlovo[pageId]);
+					}
 				}
 			}
 		}

@@ -7,6 +7,9 @@ import { checkIsExist, addNewProduct, updateProductPrice } from '../../common/my
 // COMMON
 import { connectSqlConfig } from '../../common/mysql/sqlConfig.js';
 
+// PAGES
+import { allPages } from './pages.js';
+
 export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
@@ -19,7 +22,7 @@ export const CarrefourProducts = async () => {
 
 	const rootSelector = 'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > div > div';
 
-	const getPageData = async (itemId) => {
+	const getPageData = async (itemId, productCategory) => {
 		const baseSelectors = `${rootSelector}:nth-child(${itemId}) > div`;
 		let selectorPrice;
 		let selectorPriceRest;
@@ -68,32 +71,58 @@ export const CarrefourProducts = async () => {
 			const productPrice = `${price},${priceRest} zł`;
 			const shop = 'carrefours';
 
-			const createCallback = () => addNewProduct(connection, shop, productTitle, productPrice);
+			const createCallback = () => addNewProduct({ connection, shop, productTitle, productPrice, productCategory });
 			const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
 			checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
 		}
 	};
 
-	const getHomePage = async () => {
-		await page.goto('https://www.carrefour.pl/artykuly-spozywcze');
-		const itemsCounter = (await page.$$(`${rootSelector}`)).length;
-		for (let i = 1; i <= itemsCounter; i++) await getPageData(i);
-	};
+	const getPages = async () => {
+		if (allPages && allPages.length > 0) {
+			for (let pageCount = 0; pageCount <= allPages?.length; pageCount++) {
+				if (allPages[pageCount]) {
+					// try {
+					const productCategory = allPages[pageCount]?.category;
+					const urls = allPages[pageCount]?.urls;
+					console.log(urls);
 
-	const getRestPages = async () => {
-		for (let pageId = 1; pageId <= 75; pageId++) {
-			console.log('PageID', pageId);
-			await page.goto(`https://www.carrefour.pl/artykuly-spozywcze?page=${pageId}`);
-			await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
-			const itemsCounter = (await page.$$(`${rootSelector}`)).length;
-			for (let i = 1; i <= itemsCounter; i++) await getPageData(i);
+					for (let urlCounter = 0; urlCounter < urls?.length; urlCounter++) {
+						await page.goto(urls[urlCounter]);
+						const selectorAllPages = await page.waitForSelector(
+							'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > p',
+						);
+						const allPages = await page.evaluate((selectorAllPages) => selectorAllPages?.textContent, selectorAllPages);
+						const allPagesCounter = Number(allPages?.slice(2)?.trim());
+
+						console.log(allPagesCounter);
+						const getRestPages = async () => {
+							for (let url = 1; url < allPagesCounter; url++) {
+								console.log('url:', url);
+								await page.goto(`${urls[urlCounter]}?page=${url}`);
+								await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
+								const itemsCounter = (
+									await page.$$(
+										'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(4) > div > div > div',
+									)
+								).length;
+								console.log('items:', itemsCounter);
+								// for (let i = 1; i <= itemsCounter; i++) await getPageData(i, productCategory);
+							}
+						};
+
+						// await getRestPages();
+					}
+					// } catch (e) {
+					// 	console.log('PageError!', allPages[pageCount]);
+					// }
+				}
+			}
 		}
 	};
 
 	const endConnection = async () => connection.end();
 
-	await getHomePage();
-	await getRestPages();
-	await endConnection();
+	await getPages();
+	// await endConnection();
 	await browser.close();
 };
