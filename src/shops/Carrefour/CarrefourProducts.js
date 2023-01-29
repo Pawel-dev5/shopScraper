@@ -6,6 +6,7 @@ import { checkIsExist, addNewProduct, updateProductPrice } from '../../common/my
 
 // COMMON
 import { connectSqlConfig } from '../../common/mysql/sqlConfig.js';
+import { autoScroll } from '../../common/autoScroll.js';
 
 // PAGES
 import { allPages } from './pages.js';
@@ -13,67 +14,94 @@ import { allPages } from './pages.js';
 export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
-	const timeout = { timeout: 10 };
+	const timeout = { timeout: 5000 };
 	const connection = mysql.createConnection(connectSqlConfig);
 	connection.connect(function (err) {
 		if (err) return console.error('error: ' + err.message);
 		console.log('Connected to the MySQL server.');
 	});
 
-	const rootSelector = 'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > div > div';
+	const rootSelector = (index) =>
+		`div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(${index}) > div > div > div`;
 
-	const getPageData = async (itemId, productCategory) => {
-		const baseSelectors = `${rootSelector}:nth-child(${itemId}) > div`;
-		let selectorPrice;
-		let selectorPriceRest;
-		let selectorTitle;
-
-		const getPrice = (index) =>
-			page.waitForSelector(
-				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)`,
-				timeout,
-			);
-		const getPriceRest = (index) =>
-			page.waitForSelector(
-				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)`,
-				timeout,
-			);
+	const getProducts = async (itemId, productCategory) => {
+		let baseSelectors;
 
 		try {
-			selectorTitle = await page.waitForSelector(`${baseSelectors} > div.MuiBox-root > a.MuiButtonBase-root`, timeout);
-			selectorPrice = await getPrice(4);
-			selectorPriceRest = await getPriceRest(4);
+			baseSelectors = `${rootSelector(4)}:nth-child(${itemId}) > div`;
 		} catch (e) {
 			try {
-				selectorPrice = await getPrice(3);
-				selectorPriceRest = await getPriceRest(3);
+				baseSelectors = `${rootSelector(5)}:nth-child(${itemId}) > div`;
 			} catch (e) {
-				try {
-					selectorPrice = await getPrice(5);
-					selectorPriceRest = await getPriceRest(5);
-				} catch (e) {
-					try {
-						selectorPrice = await getPrice(6);
-						selectorPriceRest = await getPriceRest(6);
-					} catch (e) {
-						// console.log(e);
-					}
-				}
+				console.log('ERROR! CANT GET BASE SELECTOR');
 			}
 		}
 
-		if (selectorPrice && selectorTitle && selectorPriceRest) {
-			const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
-			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
-			const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
+		if (baseSelectors) {
+			let selectorPrice;
+			let selectorPriceRest;
+			let selectorTitle;
+			let selectorImage;
 
-			const productTitle = title?.replace("'", "\\'")?.split("'");
-			const productPrice = `${price},${priceRest} zł`;
-			const shop = 'carrefours';
+			const getPrice = (index) =>
+				page.waitForSelector(
+					`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)`,
+					timeout,
+				);
 
-			const createCallback = () => addNewProduct({ connection, shop, productTitle, productPrice, productCategory });
-			const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
-			checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
+			const getPriceRest = (index) =>
+				page.waitForSelector(
+					`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)`,
+					timeout,
+				);
+
+			const getTitle = () => page.waitForSelector(`${baseSelectors} > div.MuiBox-root > a`, timeout);
+			const getImageUrl = () => page.waitForSelector(`${baseSelectors} > button.MuiButtonBase-root > div > img`);
+
+			try {
+				selectorTitle = await getTitle();
+				selectorImage = await getImageUrl();
+				selectorPrice = await getPrice(4);
+				selectorPriceRest = await getPriceRest(4);
+			} catch (e) {
+				try {
+					selectorPrice = await getPrice(3);
+					selectorPriceRest = await getPriceRest(3);
+				} catch (e) {
+					try {
+						selectorPrice = await getPrice(5);
+						selectorPriceRest = await getPriceRest(5);
+					} catch (e) {
+						try {
+							selectorPrice = await getPrice(6);
+							selectorPriceRest = await getPriceRest(6);
+						} catch (e) {
+							// console.log(e);
+						}
+					}
+				}
+			}
+
+			if (selectorImage && selectorTitle && selectorPrice && selectorPriceRest) {
+				const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
+				const imageUrl = await page.evaluate((selectorImage) => selectorImage?.src, selectorImage);
+				const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
+				const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
+
+				const productTitle = title?.replace("'", "\\'");
+				const productPrice = `${price},${priceRest} zł`;
+				const shop = 'carrefours';
+
+				// const createCallback = () => console.log('create', productTitle, productPrice, productCategory);
+				const createCallback = () =>
+					addNewProduct({ connection, shop, productTitle, productPrice, productCategory, imageUrl });
+
+				// const updateCallback = (id) => console.log('update', id, productTitle, productPrice);
+				const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
+				checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
+			} else {
+				console.log('ERROR! BRAK SELECTORA', itemId, selectorTitle, selectorImage);
+			}
 		}
 	};
 
@@ -81,40 +109,69 @@ export const CarrefourProducts = async () => {
 		if (allPages && allPages.length > 0) {
 			for (let pageCount = 0; pageCount <= allPages?.length; pageCount++) {
 				if (allPages[pageCount]) {
-					// try {
 					const productCategory = allPages[pageCount]?.category;
 					const urls = allPages[pageCount]?.urls;
-					console.log(urls);
 
 					for (let urlCounter = 0; urlCounter < urls?.length; urlCounter++) {
 						await page.goto(urls[urlCounter]);
-						const selectorAllPages = await page.waitForSelector(
-							'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(5) > div > p',
-						);
+						let selectorAllPages;
+
+						const getCounter = (index) =>
+							page.waitForSelector(
+								`div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(${index}) > div > p`,
+							);
+
+						try {
+							selectorAllPages = await getCounter(5);
+						} catch (e) {
+							try {
+								selectorAllPages = await getCounter(6);
+							} catch (e) {
+								console.log('ERROR!', 'CANT FIND PAGES COUNTER ON PAGE:', urls[urlCounter]);
+							}
+						}
+
 						const allPages = await page.evaluate((selectorAllPages) => selectorAllPages?.textContent, selectorAllPages);
 						const allPagesCounter = Number(allPages?.slice(2)?.trim());
+						console.log('AllPagesCounter:', allPagesCounter);
 
-						console.log(allPagesCounter);
-						const getRestPages = async () => {
-							for (let url = 1; url < allPagesCounter; url++) {
-								console.log('url:', url);
-								await page.goto(`${urls[urlCounter]}?page=${url}`);
-								await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
-								const itemsCounter = (
-									await page.$$(
-										'div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(4) > div > div > div',
-									)
-								).length;
-								console.log('items:', itemsCounter);
-								// for (let i = 1; i <= itemsCounter; i++) await getPageData(i, productCategory);
+						for (let url = 0; url < allPagesCounter; url++) {
+							let finalUrl = `${urls[urlCounter]}?page=${url}`;
+							if (url === 0) finalUrl = urls[urlCounter];
+
+							console.log('url:', finalUrl);
+							await page.goto(finalUrl);
+							await autoScroll(page);
+
+							let itemsCounter;
+							const geItemsCounter = (index) =>
+								page.$$(
+									`div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(${index}) > div > div > div`,
+								);
+							try {
+								itemsCounter = await geItemsCounter(4);
+							} catch (e) {
+								try {
+									itemsCounter = await geItemsCounter(5);
+								} catch (e) {
+									console.log('ERROR! CANT GET ALL ITEMS COUNT ON PAGE:', urls[urlCounter]);
+								}
 							}
-						};
 
-						// await getRestPages();
+							if (itemsCounter?.length === 0) {
+								try {
+									itemsCounter = await geItemsCounter(5);
+								} catch (e) {
+									console.log('ERROR! CANT GET ALL ITEMS COUNT ON PAGE:', urls[urlCounter]);
+								}
+							}
+
+							if (itemsCounter) {
+								console.log('items:', itemsCounter?.length);
+								for (let i = 1; i <= itemsCounter?.length; i++) await getProducts(i, productCategory);
+							}
+						}
 					}
-					// } catch (e) {
-					// 	console.log('PageError!', allPages[pageCount]);
-					// }
 				}
 			}
 		}

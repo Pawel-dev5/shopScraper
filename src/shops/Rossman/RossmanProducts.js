@@ -16,7 +16,7 @@ export const RossmanProducts = async () => {
 		console.log('Connected to the MySQL server.');
 	});
 
-	const getPageData = async (itemId) => {
+	const getPageData = async (itemId, productCategory) => {
 		const baseSelectors = `div.product-list > div:nth-child(${itemId}) > div`;
 		let selectorPrice;
 		let selectorTitle;
@@ -50,7 +50,15 @@ export const RossmanProducts = async () => {
 			const shop = 'rossmans';
 
 			const createCallback = () =>
-				addNewProduct({ connection, shop, productTitle, productPrice: price, imageUrl, productDescription: description });
+				addNewProduct({
+					connection,
+					shop,
+					productTitle,
+					productPrice: price,
+					imageUrl,
+					productDescription: description,
+					productCategory,
+				});
 			const updateCallback = (id) => updateProductPrice(connection, shop, id, price);
 			checkIsExist(connection, shop, productTitle, createCallback, updateCallback, description);
 		}
@@ -58,29 +66,30 @@ export const RossmanProducts = async () => {
 
 	const endConnection = async () => connection.end();
 	const getPages = async () => {
-		const scrap = async ({ pageMax, url }) => {
+		const scrap = async ({ pageMax, url, productCategory }) => {
 			for (let pageId = 1; pageId <= pageMax; pageId++) {
-				console.log('PageID', pageId);
-				await page.goto(`https://www.rossmann.pl/kategoria/${url}?Page=${pageId}&PageSize=96`);
+				const currentUrl = `https://www.rossmann.pl/kategoria/${url}?Page=${pageId}&PageSize=96`;
+				console.log('PageID', currentUrl);
+				await page.goto(currentUrl);
 				await page.evaluate((_) => window.scrollBy(0, window.innerHeight));
 				const itemsCounter = (await page.$$('div.product-list > div')).length;
-				for (let i = 1; i <= itemsCounter; i++) await getPageData(i);
+				for (let i = 1; i <= itemsCounter; i++) await getPageData(i, productCategory);
 			}
 		};
-		await scrap({ pageMax: 27, url: 'twarz,8686' });
-		await scrap({ pageMax: 65, url: 'makijaz,8528' });
-		await scrap({ pageMax: 21, url: 'wlosy,8655' });
-		await scrap({ pageMax: 11, url: 'cialo,8625' });
-		await scrap({ pageMax: 27, url: 'higiena,8576' });
-		await scrap({ pageMax: 14, url: 'perfumy,8512' });
-		await scrap({ pageMax: 19, url: 'mama-i-dziecko,8471' });
-		await scrap({ pageMax: 15, url: 'mezczyzna,9246' });
-		await scrap({ pageMax: 23, url: 'zywnosc,8405' });
-		await scrap({ pageMax: 3, url: 'akcje-specjalne,9598' });
-		await scrap({ pageMax: 9, url: 'czystosc-w-domu,8323' });
-		await scrap({ pageMax: 10, url: 'zdrowie,8445' });
-		await scrap({ pageMax: 14, url: 'wyposazenie-domu,8303' });
-		await scrap({ pageMax: 4, url: 'zwierzeta,8372' });
+		// await scrap({ pageMax: 27, url: 'twarz,8686', productCategory: 'faceRossman' });
+		// await scrap({ pageMax: 65, url: 'makijaz,8528', productCategory: 'makeUpRossman' });
+		// await scrap({ pageMax: 21, url: 'wlosy,8655', productCategory: 'hairRossman' });
+		// await scrap({ pageMax: 11, url: 'cialo,8625', productCategory: 'bodyRossman' });
+		// await scrap({ pageMax: 27, url: 'higiena,8576', productCategory: 'cleanRossman' });
+		// await scrap({ pageMax: 14, url: 'perfumy,8512', productCategory: 'perfumeRossman' });
+		await scrap({ pageMax: 19, url: 'mama-i-dziecko,8471', productCategory: 'babyRossman' });
+		await scrap({ pageMax: 15, url: 'mezczyzna,9246', productCategory: 'manRossman' });
+		await scrap({ pageMax: 23, url: 'zywnosc,8405', productCategory: 'foodRossman' });
+		await scrap({ pageMax: 3, url: 'akcje-specjalne,9598', productCategory: 'specjalRossman' });
+		await scrap({ pageMax: 9, url: 'czystosc-w-domu,8323', productCategory: 'homeCleanRossman' });
+		await scrap({ pageMax: 10, url: 'zdrowie,8445', productCategory: 'healthRossman' });
+		await scrap({ pageMax: 14, url: 'wyposazenie-domu,8303', productCategory: 'homeRossman' });
+		await scrap({ pageMax: 4, url: 'zwierzeta,8372', productCategory: 'petsRossman' });
 	};
 
 	await getPages();

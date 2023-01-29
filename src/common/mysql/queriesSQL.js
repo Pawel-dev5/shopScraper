@@ -66,9 +66,7 @@ const createProduct = ({
 	productCategory,
 }) => {
 	// CREATE PRODUCT ITEM
-	let sqlCreateProduct;
-
-	sqlCreateProduct = `INSERT INTO ${shop}(id, title, created_by_id, updated_by_id, image_url, created_at, updated_at, category)
+	let sqlCreateProduct = `INSERT INTO ${shop}(id, title, created_by_id, updated_by_id, image_url, created_at, updated_at, category)
 	VALUES("${productID}", "${productTitle}", 1, 1, "${imageUrl}", "${currentDate}", "${currentDate}", "${productCategory}")`;
 
 	if (productDescription) {
@@ -101,7 +99,6 @@ export const addNewProduct = ({
 	const connectionID = getRandomInt(randomRange[0], randomRange[1]);
 
 	let checkID = `SELECT * FROM ${shop} WHERE id = "${productID}"`;
-
 	connection.query(checkID, (error, results) => {
 		if (error) return console.error('checkIDError', productTitle, error.message);
 
@@ -132,13 +129,11 @@ export const updateProductPrice = (connection, shop, productID, productPrice) =>
 	const priceID = getRandomInt(randomRange[0], randomRange[1]);
 	const connectionID = getRandomInt(randomRange[0], randomRange[1]);
 
-	let checkExistingComponents = `SELECT * FROM ${shop}_components WHERE entity_id = "${productID}"`;
-
 	const checkAllComponents = (data) => {
 		data?.forEach((item) => {
 			let checkExistingPrices = `SELECT * FROM components_products_prices WHERE id = "${item?.component_id}"`;
 			connection.query(checkExistingPrices, (error, results) => {
-				if (error) return console.error('checkIsExistProd', error?.message);
+				if (error) return console.error('checkIsExistProd', error?.message, 'id:', item?.component_id);
 
 				results?.forEach((result) => {
 					const baseDate = result.date.toISOString().replace('T23:00:00.000Z', '');
@@ -154,7 +149,7 @@ export const updateProductPrice = (connection, shop, productID, productPrice) =>
 						itemMonth === currentMonth &&
 						(itemDay === currentDay || itemDay === currentDay - 1)
 					) {
-						console.log('update cena z dnia dzisiejszego juz istnieje', productID, productPrice);
+						console.log('update, cena z dziś istnieje', productID, productPrice);
 					} else {
 						// CREATE PRICE AND RELATIONS
 						createProductPrice({ connection, shop, priceID, currentDate, productPrice, connectionID, productID });
@@ -165,6 +160,7 @@ export const updateProductPrice = (connection, shop, productID, productPrice) =>
 		});
 	};
 
+	let checkExistingComponents = `SELECT * FROM ${shop}_components WHERE entity_id = "${productID}"`;
 	connection.query(checkExistingComponents, (error, results) => {
 		if (error) return console.error('checkIsExistProd', error?.message);
 		if (results?.length > 0) checkAllComponents(results);
