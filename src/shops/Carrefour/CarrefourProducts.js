@@ -79,6 +79,7 @@ const getElements = async ({ baseSelectors, connection, page, productCategory, t
 		}
 	}
 };
+
 export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
