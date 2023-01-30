@@ -11,10 +11,78 @@ import { autoScroll } from '../../common/autoScroll.js';
 // PAGES
 import { allPages } from './pages.js';
 
+const getElements = async ({ baseSelectors, connection, page, productCategory, timeout }) => {
+	if (baseSelectors) {
+		let selectorPrice;
+		let selectorPriceRest;
+		let selectorTitle;
+		let selectorImage;
+
+		const getPrice = (index) =>
+			page.waitForSelector(
+				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)`,
+				timeout,
+			);
+
+		const getPriceRest = (index) =>
+			page.waitForSelector(
+				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)`,
+				timeout,
+			);
+
+		const getTitle = () => page.waitForSelector(`${baseSelectors} > div.MuiBox-root > a`, timeout);
+		const getImageUrl = () => page.waitForSelector(`${baseSelectors} > button.MuiButtonBase-root > div > img`, timeout);
+
+		try {
+			selectorTitle = await getTitle();
+			selectorImage = await getImageUrl();
+			selectorPrice = await getPrice(4);
+			selectorPriceRest = await getPriceRest(4);
+		} catch (e) {
+			try {
+				selectorPrice = await getPrice(3);
+				selectorPriceRest = await getPriceRest(3);
+			} catch (e) {
+				try {
+					selectorPrice = await getPrice(5);
+					selectorPriceRest = await getPriceRest(5);
+				} catch (e) {
+					try {
+						selectorPrice = await getPrice(6);
+						selectorPriceRest = await getPriceRest(6);
+					} catch (e) {
+						// console.log(e);
+					}
+				}
+			}
+		}
+
+		if (selectorImage && selectorTitle && selectorPrice && selectorPriceRest) {
+			const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
+			const imageUrl = await page.evaluate((selectorImage) => selectorImage?.src, selectorImage);
+			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
+			const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
+
+			const productTitle = title?.replace("'", "\\'")?.trim();
+			const productPrice = `${price},${priceRest} zł`;
+			const shop = 'carrefours';
+
+			// const createCallback = () => console.log('create', productTitle, productPrice, productCategory);
+			const createCallback = () =>
+				addNewProduct({ connection, shop, productTitle, productPrice, productCategory, imageUrl });
+
+			// const updateCallback = (id) => console.log('update', id, productTitle, productPrice);
+			const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
+			checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
+		} else {
+			console.log('ERROR! BRAK SELECTORA', itemId, selectorTitle, selectorImage);
+		}
+	}
+};
 export const CarrefourProducts = async () => {
 	const browser = await launch({});
 	const page = await browser.newPage();
-	const timeout = { timeout: 5000 };
+	const timeout = { timeout: 200 };
 	const connection = mysql.createConnection(connectSqlConfig);
 	connection.connect(function (err) {
 		if (err) return console.error('error: ' + err.message);
@@ -29,78 +97,13 @@ export const CarrefourProducts = async () => {
 
 		try {
 			baseSelectors = `${rootSelector(4)}:nth-child(${itemId}) > div`;
+			await getElements({ baseSelectors, connection, page, productCategory, timeout });
 		} catch (e) {
 			try {
 				baseSelectors = `${rootSelector(5)}:nth-child(${itemId}) > div`;
+				await getElements({ baseSelectors, connection, page, productCategory, timeout });
 			} catch (e) {
 				console.log('ERROR! CANT GET BASE SELECTOR');
-			}
-		}
-
-		if (baseSelectors) {
-			let selectorPrice;
-			let selectorPriceRest;
-			let selectorTitle;
-			let selectorImage;
-
-			const getPrice = (index) =>
-				page.waitForSelector(
-					`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)`,
-					timeout,
-				);
-
-			const getPriceRest = (index) =>
-				page.waitForSelector(
-					`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)`,
-					timeout,
-				);
-
-			const getTitle = () => page.waitForSelector(`${baseSelectors} > div.MuiBox-root > a`, timeout);
-			const getImageUrl = () => page.waitForSelector(`${baseSelectors} > button.MuiButtonBase-root > div > img`);
-
-			try {
-				selectorTitle = await getTitle();
-				selectorImage = await getImageUrl();
-				selectorPrice = await getPrice(4);
-				selectorPriceRest = await getPriceRest(4);
-			} catch (e) {
-				try {
-					selectorPrice = await getPrice(3);
-					selectorPriceRest = await getPriceRest(3);
-				} catch (e) {
-					try {
-						selectorPrice = await getPrice(5);
-						selectorPriceRest = await getPriceRest(5);
-					} catch (e) {
-						try {
-							selectorPrice = await getPrice(6);
-							selectorPriceRest = await getPriceRest(6);
-						} catch (e) {
-							// console.log(e);
-						}
-					}
-				}
-			}
-
-			if (selectorImage && selectorTitle && selectorPrice && selectorPriceRest) {
-				const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
-				const imageUrl = await page.evaluate((selectorImage) => selectorImage?.src, selectorImage);
-				const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
-				const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
-
-				const productTitle = title?.replace("'", "\\'");
-				const productPrice = `${price},${priceRest} zł`;
-				const shop = 'carrefours';
-
-				// const createCallback = () => console.log('create', productTitle, productPrice, productCategory);
-				const createCallback = () =>
-					addNewProduct({ connection, shop, productTitle, productPrice, productCategory, imageUrl });
-
-				// const updateCallback = (id) => console.log('update', id, productTitle, productPrice);
-				const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
-				checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
-			} else {
-				console.log('ERROR! BRAK SELECTORA', itemId, selectorTitle, selectorImage);
 			}
 		}
 	};
@@ -119,6 +122,7 @@ export const CarrefourProducts = async () => {
 						const getCounter = (index) =>
 							page.waitForSelector(
 								`div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(${index}) > div > p`,
+								timeout,
 							);
 
 						try {
@@ -147,6 +151,7 @@ export const CarrefourProducts = async () => {
 							const geItemsCounter = (index) =>
 								page.$$(
 									`div.MuiBox-root > div.MuiBox-root > div:nth-child(2) > div > div:nth-child(${index}) > div > div > div`,
+									timeout,
 								);
 							try {
 								itemsCounter = await geItemsCounter(4);
