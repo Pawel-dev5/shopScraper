@@ -16,6 +16,7 @@ export const AuchanProducts = async () => {
 		if (err) return console.error('error: ' + err.message);
 		console.log('Connected to the MySQL server.');
 	});
+	const timeout = { timeout: 200 };
 
 	const getPages = async () => {
 		const getPageData = async (itemId, productCategory) => {
@@ -23,20 +24,22 @@ export const AuchanProducts = async () => {
 			await page.waitForSelector(baseSelectors);
 			await page.focus(baseSelectors);
 			await page.$eval(baseSelectors, (e) => e.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'end' }));
-			await page.waitForTimeout(2000);
+			await page.waitForTimeout(1000);
 
 			let selectorTitle;
 			let selectorPrice;
 			let selectorImage;
 
 			const getTitle = () =>
-				page.waitForSelector(`${baseSelectors} > div > div > div:nth-child(2) > div:nth-child(1) > a > span`);
+				page.waitForSelector(`${baseSelectors} > div > div > div:nth-child(2) > div:nth-child(1) > a > span`, timeout);
 
-			const getPrice = () => page.waitForSelector(`${baseSelectors} > div > div > div:nth-child(3) > div:nth-child(1)`);
+			const getPrice = () =>
+				page.waitForSelector(`${baseSelectors} > div > div > div:nth-child(3) > div:nth-child(1)`, timeout);
 
 			const getImage = () =>
 				page.waitForSelector(
 					`${baseSelectors} > div > div > div:nth-child(1) > div > a > div > div:last-child > picture > source`,
+					timeout,
 				);
 
 			try {
@@ -52,7 +55,15 @@ export const AuchanProducts = async () => {
 				const imageUrl = await page.evaluate((selectorImage) => selectorImage?.srcset, selectorImage);
 				const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
 
-				const productTitle = title?.replace("'", "\\'")?.trim();
+				const productTitle = title
+					?.replace("'", "\\'")
+					?.replace('- - ) ', '')
+					?.replace('- - )', '')
+					?.replace('- - ', '')
+					?.replace('- ', '')
+					?.replace('- - )>>', '')
+					?.replace('- - /', '')
+					?.trim();
 				const productPrice = price?.trim();
 				const shop = 'auchans';
 
@@ -135,7 +146,7 @@ export const AuchanProducts = async () => {
 										console.log(title?.trim());
 										console.log('loadedItems', loadedItems);
 										console.log('allItems', allItems);
-										console.log('allitemsloaded?', loadedItems === allItems);
+										console.log('allitemsloaded?', loadedItems?.trim() === allItems?.trim());
 									}
 								} catch (e) {}
 							};
@@ -149,7 +160,7 @@ export const AuchanProducts = async () => {
 							};
 
 							await scrollToLoadAllItems();
-							await checkFinalCounter();
+							// await checkFinalCounter();
 							await scrapPage();
 						}
 					}
