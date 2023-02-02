@@ -105,7 +105,7 @@ export const AuchanProducts = async () => {
 									let loadedItems = title?.trim()?.slice(11, 14);
 									let allItems = title?.trim()?.slice(28);
 
-									const scrollCounter = allItems / 15;
+									const scrollCounter = Math.ceil(allItems / 15);
 
 									for (let i = 1; i <= scrollCounter + 1; i++) {
 										const counter = await page.waitForSelector('div._2xr_');

@@ -11,9 +11,9 @@ const scrapeShops = async () => {
 	// await CarrefourProducts();
 	// await RossmanProducts();
 	// await BiedronkaProducts();
-	await AuchanProducts();
+	// await AuchanProducts();
 	// await CarrefourExpressProducts();
-	// await MakroProducts();
+	await MakroProducts();
 	// await scrapeCarrefourNewspaper();
 };
 
