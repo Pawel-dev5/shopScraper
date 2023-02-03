@@ -1,3 +1,10 @@
+const savingsPages = {
+	category: 'savingsBiedra',
+	urls: [
+		'https://glovoapp.com/pl/pl/warszawa/biedronka-waw/?content=w-tym-tygodniu-sc.216494647%2Fbiedronkowe-oszczednosci-c.1185593840',
+	],
+};
+
 const vegetablesPages = {
 	category: 'vegetablesAndFruitsBiedra',
 	urls: [
@@ -199,6 +206,7 @@ const petsPages = {
 };
 
 export const pagesGlovo = [
+	savingsPages,
 	vegetablesPages,
 	meatPages,
 	bakeryPages,

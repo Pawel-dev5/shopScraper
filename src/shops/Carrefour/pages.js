@@ -190,7 +190,7 @@ const beauty = {
 
 const hairCare = {
 	category: 'hairCareCarrefour',
-	urls: ['https://www.carrefour.pl/drogeria-kosmetyki-i-zdrowie/do-wlosow'],
+	urls: ['https://www.carrefour.pl/drogeria-kosmetyki-i-zdrowie/do-wlosow'], // TO CHECK LAST ELEMENT: L\'Oreal Paris Excellence Creme Farba do włosów 10.21 bardzo bardzo jasny perłowy blond
 };
 
 const perfume = {

@@ -13,10 +13,12 @@ import { allPages } from './pages.js';
 
 const getElements = async ({ baseSelectors, connection, page, productCategory, timeout }) => {
 	if (baseSelectors) {
-		let selectorPrice;
-		let selectorPriceRest;
 		let selectorTitle;
 		let selectorImage;
+		let selectorPromotionPrice;
+		let selectorPromotionPriceRest;
+		let selectorPrice;
+		let selectorPriceRest;
 
 		const getPrice = (index) =>
 			page.waitForSelector(
@@ -27,6 +29,17 @@ const getElements = async ({ baseSelectors, connection, page, productCategory, t
 		const getPriceRest = (index) =>
 			page.waitForSelector(
 				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)`,
+				timeout,
+			);
+		const getPromotionPrice = (index) =>
+			page.waitForSelector(
+				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)`,
+				timeout,
+			);
+
+		const getPromotionPriceRest = (index) =>
+			page.waitForSelector(
+				`${baseSelectors} > div:nth-child(${index}) > div:nth-child(1) > div:nth-child(1) > div:nth-child(3)`,
 				timeout,
 			);
 
@@ -50,29 +63,98 @@ const getElements = async ({ baseSelectors, connection, page, productCategory, t
 					try {
 						selectorPrice = await getPrice(6);
 						selectorPriceRest = await getPriceRest(6);
+					} catch (e) {}
+				}
+			}
+		}
+		try {
+			selectorPromotionPrice = await getPromotionPrice(4);
+			selectorPromotionPriceRest = await getPromotionPriceRest(4);
+		} catch (e) {
+			try {
+				selectorPromotionPrice = await getPromotionPrice(3);
+				selectorPromotionPriceRest = await getPromotionPriceRest(3);
+			} catch (e) {
+				try {
+					selectorPromotionPrice = await getPromotionPrice(5);
+					selectorPromotionPriceRest = await getPromotionPriceRest(5);
+				} catch (e) {
+					try {
+						selectorPromotionPrice = await getPromotionPrice(6);
+						selectorPromotionPriceRest = await getPromotionPriceRest(6);
 					} catch (e) {
-						// console.log(e);
+						try {
+							// HANDLE ERROR IF PROMOTION NOT EXIST
+							selectorPromotionPrice = await selectorPrice;
+							selectorPromotionPriceRest = await selectorPriceRest;
+						} catch (e) {}
 					}
 				}
 			}
 		}
-
 		if (selectorImage && selectorTitle && selectorPrice && selectorPriceRest) {
 			const title = await page.evaluate((selectorTitle) => selectorTitle?.textContent, selectorTitle);
 			const imageUrl = await page.evaluate((selectorImage) => selectorImage?.src, selectorImage);
 			const price = await page.evaluate((selectorPrice) => selectorPrice?.textContent, selectorPrice);
 			const priceRest = await page.evaluate((selectorPriceRest) => selectorPriceRest?.textContent, selectorPriceRest);
 
+			let productPromotionPrice = null;
+			let productPrice;
+
+			if (selectorPromotionPrice && selectorPromotionPriceRest) {
+				const promotionPrice = await page.evaluate(
+					(selectorPromotionPrice) => selectorPromotionPrice?.textContent,
+					selectorPromotionPrice,
+				);
+				const promotionPriceRest = await page.evaluate(
+					(selectorPromotionPriceRest) => selectorPromotionPriceRest?.textContent,
+					selectorPromotionPriceRest,
+				);
+				productPromotionPrice = `${price?.trim()},${priceRest?.trim()} zł`;
+				productPrice = `${promotionPrice?.trim()},${promotionPriceRest?.trim()} zł`;
+			}
+
+			if (productPromotionPrice === productPrice) {
+				productPromotionPrice = null;
+				productPrice = `${price?.trim()},${priceRest?.trim()} zł`;
+			}
+
 			const productTitle = title?.replace("'", "\\'")?.trim();
-			const productPrice = `${price},${priceRest} zł`;
 			const shop = 'carrefours';
 
-			// const createCallback = () => console.log('create', productTitle, productPrice, productCategory);
+			// const createCallback = () =>
+			// 	console.log(
+			// 		'CREATE',
+			// 		productTitle,
+			// 		'PRICE:',
+			// 		productPrice,
+			// 		'PROMOTION PRICE:',
+			// 		productPromotionPrice,
+			// 		productCategory,
+			// 	);
 			const createCallback = () =>
-				addNewProduct({ connection, shop, productTitle, productPrice, productCategory, imageUrl });
+				addNewProduct({
+					connection,
+					shop,
+					productTitle,
+					productPrice,
+					productCategory,
+					imageUrl,
+					productPromotionPrice,
+					productPromotionDescription: null,
+				});
 
-			// const updateCallback = (id) => console.log('update', id, productTitle, productPrice);
-			const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice);
+			// const updateCallback = (id) =>
+			// 	console.log(
+			// 		'UPDATE',
+			// 		productTitle,
+			// 		'PRICE:',
+			// 		productPrice,
+			// 		'PROMOTION PRICE:',
+			// 		productPromotionPrice,
+			// 		productCategory,
+			// 	);
+			const updateCallback = (id) => updateProductPrice(connection, shop, id, productPrice, productPromotionPrice, null);
 			checkIsExist(connection, shop, productTitle, createCallback, updateCallback);
 		} else {
 			console.log('ERROR! BRAK SELECTORA', itemId, selectorTitle, selectorImage);

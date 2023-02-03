@@ -14,10 +14,20 @@ const createRelation = ({ connection, shop, priceID, connectionID, productID }) 
 	} else console.log('RELATION ERROR!', 'ProdID:', productID, 'PriceID:', priceID, 'ConnectID:', connectionID);
 };
 
-const createProductPrice = ({ connection, shop, priceID, currentDate, productPrice, connectionID, productID }) => {
+const createProductPrice = ({
+	connection,
+	shop,
+	priceID,
+	currentDate,
+	productPrice,
+	connectionID,
+	productID,
+	productPromotionPrice,
+	productPromotionDescription,
+}) => {
 	// CREATE PRODUCT PRICE
-	const sqlCreatePrice = `INSERT INTO components_products_prices(id,date,price)
-		VALUES("${priceID}",'${currentDate}','${productPrice}')`;
+	const sqlCreatePrice = `INSERT INTO components_products_${shop}_prices(id, date, price, promotion, promotion_description)
+		VALUES("${priceID}", '${currentDate}', '${productPrice}', '${productPromotionPrice}', '${productPromotionDescription}')`;
 	connection.query(sqlCreatePrice, (error) => {
 		if (error) return console.log('createPriceQueryError', error);
 	});
@@ -42,8 +52,8 @@ const createProductPrice = ({ connection, shop, priceID, currentDate, productPri
 	// });
 
 	// CREATE PRODUCT PRICE CONNECTIONS
-	const sqlCreateProductPriceRelation = `INSERT INTO ${shop}_components(id,entity_id,component_id,component_type,field)
-			VALUES("${connectionID}","${productID}","${priceID}","products.price","prices")`;
+	const sqlCreateProductPriceRelation = `INSERT INTO ${shop}_components(id, entity_id, component_id, component_type, field)
+			VALUES("${connectionID}", "${productID}", "${priceID}", "products.${shop}-price", "${shop}Prices")`;
 	if (productID && priceID && connectionID && connection) {
 		connection.query(sqlCreateProductPriceRelation, (error) => {
 			if (error)
@@ -64,6 +74,8 @@ const createProduct = ({
 	imageUrl,
 	productDescription,
 	productCategory,
+	productPromotionPrice,
+	productPromotionDescription,
 }) => {
 	// CREATE PRODUCT ITEM
 	let sqlCreateProduct = `INSERT INTO ${shop}(id, title, created_by_id, updated_by_id, image_url, created_at, updated_at, category)
@@ -79,7 +91,17 @@ const createProduct = ({
 	});
 
 	// CREATE PRICE AND RELATIONS
-	createProductPrice({ connection, shop, priceID, currentDate, productPrice, connectionID, productID });
+	createProductPrice({
+		connection,
+		shop,
+		priceID,
+		currentDate,
+		productPrice,
+		connectionID,
+		productID,
+		productPromotionPrice,
+		productPromotionDescription,
+	});
 	console.log('create', productTitle);
 };
 
@@ -91,6 +113,8 @@ export const addNewProduct = ({
 	imageUrl,
 	productDescription,
 	productCategory,
+	productPromotionPrice,
+	productPromotionDescription,
 }) => {
 	const date = new Date();
 	const currentDate = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`;
@@ -100,7 +124,7 @@ export const addNewProduct = ({
 
 	let checkID = `SELECT * FROM ${shop} WHERE id = "${productID}"`;
 	connection.query(checkID, (error, results) => {
-		if (error) return console.error('checkIDError', productTitle, error.message);
+		if (error) return console.log('checkIDError', productTitle, error.message);
 
 		const basicProps = {
 			connection,
@@ -113,17 +137,26 @@ export const addNewProduct = ({
 			imageUrl,
 			productDescription,
 			productCategory,
+			productPromotionPrice,
+			productPromotionDescription,
 		};
 
 		// CHECK IF ID EXIST
 		if (results.length > 0) {
-			const newProductID = getRandomInt(100000, 429496729);
+			const newProductID = getRandomInt(100, 429496729);
 			createProduct({ ...basicProps, productID: newProductID });
 		} else createProduct({ ...basicProps, productID });
 	});
 };
 
-export const updateProductPrice = (connection, shop, productID, productPrice) => {
+export const updateProductPrice = (
+	connection,
+	shop,
+	productID,
+	productPrice,
+	productPromotionPrice,
+	productPromotionDescription,
+) => {
 	const date = new Date();
 	const currentDate = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`;
 	const priceID = getRandomInt(randomRange[0], randomRange[1]);
@@ -131,10 +164,9 @@ export const updateProductPrice = (connection, shop, productID, productPrice) =>
 
 	const checkAllComponents = (data) => {
 		data?.forEach((item) => {
-			let checkExistingPrices = `SELECT * FROM components_products_prices WHERE id = "${item?.component_id}"`;
+			const checkExistingPrices = `SELECT * FROM components_products_${shop}_prices WHERE id = "${item?.component_id}"`;
 			connection.query(checkExistingPrices, (error, results) => {
 				if (error) return console.error('checkIsExistProd', error?.message, 'id:', item?.component_id);
-
 				results?.forEach((result) => {
 					const baseDate = result.date.toISOString().replace('T23:00:00.000Z', '');
 					const itemMonth = Number(baseDate.slice(5, 7));
@@ -149,20 +181,48 @@ export const updateProductPrice = (connection, shop, productID, productPrice) =>
 						itemMonth === currentMonth &&
 						(itemDay === currentDay || itemDay === currentDay - 1)
 					) {
-						console.log('update, cena z dziś istnieje', productID, productPrice);
+						console.log(
+							'Cena z dziś istnieje ID:',
+							productID,
+							'PRICE:',
+							productPrice,
+							'PROMOTION:',
+							productPromotionPrice,
+							'DESC:',
+							productPromotionDescription,
+						);
 					} else {
 						// CREATE PRICE AND RELATIONS
-						createProductPrice({ connection, shop, priceID, currentDate, productPrice, connectionID, productID });
-						console.log('update', productID, productPrice);
+						createProductPrice({
+							connection,
+							shop,
+							priceID,
+							currentDate,
+							productPrice,
+							connectionID,
+							productID,
+							productPromotionPrice,
+							productPromotionDescription,
+						});
+						console.log(
+							'UPDATE ID:',
+							productID,
+							'PRICE:',
+							productPrice,
+							'PROMOTION:',
+							productPromotionPrice,
+							'DESC:',
+							productPromotionDescription,
+						);
 					}
 				});
 			});
 		});
 	};
 
-	let checkExistingComponents = `SELECT * FROM ${shop}_components WHERE entity_id = "${productID}"`;
+	const checkExistingComponents = `SELECT * FROM ${shop}_components WHERE entity_id = "${productID}"`;
 	connection.query(checkExistingComponents, (error, results) => {
-		if (error) return console.error('checkIsExistProd', error?.message);
+		if (error) return console.log('checkIsExistProd', error?.message);
 		if (results?.length > 0) checkAllComponents(results);
 	});
 };
@@ -173,7 +233,7 @@ export const checkIsExist = (connection, shop, productTitle, createCallback, upd
 		sql = `SELECT * FROM ${shop} WHERE title = "${productTitle}" AND description = "${description}"`;
 	}
 	connection.query(sql, (error, results) => {
-		if (error) return console.error('checkIsExistProd', error?.message);
+		if (error) return console.log('checkIsExistProd', error?.message);
 		if (results?.length === 0) createCallback();
 		if (results?.length > 0) updateCallback(results[0]?.id);
 	});
